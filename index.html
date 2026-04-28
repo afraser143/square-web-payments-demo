@@ -61,6 +61,8 @@
       --success-border: #a5d6a7;
       --error-bg: #ffebee;
       --error-border: #ef9a9a;
+      --setup-bg: #fff8e1;
+      --setup-border: #ffcc80;
       --radius: 12px;
       --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
     }
@@ -199,6 +201,12 @@
       border: 1px solid var(--error-border);
     }
 
+    /* Placeholder credentials: not a payment failure, just setup remaining */
+    .status.setup {
+      background: var(--setup-bg);
+      border: 1px solid var(--setup-border);
+    }
+
     .status strong {
       display: block;
       margin-bottom: 0.35rem;
@@ -246,6 +254,7 @@
     </form>
 
     <div id="result-success" class="status success" role="status" aria-live="polite"></div>
+    <div id="result-setup" class="status setup" role="status" aria-live="polite"></div>
     <div id="result-error" class="status error" role="alert" aria-live="assertive"></div>
   </div>
 
@@ -261,13 +270,16 @@
       const cardButton = document.getElementById("card-button");
       const paymentForm = document.getElementById("payment-form");
       const resultSuccess = document.getElementById("result-success");
+      const resultSetup = document.getElementById("result-setup");
       const resultError = document.getElementById("result-error");
 
-      /** Hide both result panels before showing a new outcome */
+      /** Hide all result panels before showing a new outcome */
       function clearResults() {
         resultSuccess.classList.remove("visible");
+        resultSetup.classList.remove("visible");
         resultError.classList.remove("visible");
         resultSuccess.textContent = "";
+        resultSetup.textContent = "";
         resultError.textContent = "";
       }
 
@@ -282,7 +294,15 @@
         resultSuccess.classList.add("visible");
       }
 
-      /** Show the red error panel (tokenize failures or setup errors) */
+      /** Show the amber panel when placeholder IDs still need to be replaced */
+      function showSetupNotice(message) {
+        clearResults();
+        resultSetup.innerHTML =
+          "<strong>Next step</strong><div>" + escapeHtml(message) + "</div>";
+        resultSetup.classList.add("visible");
+      }
+
+      /** Show the red error panel (tokenize failures or SDK errors) */
       function showError(message) {
         clearResults();
         resultError.innerHTML = "<strong>Error</strong><div>" + escapeHtml(message) + "</div>";
@@ -306,7 +326,9 @@
         }
 
         if (APPLICATION_ID.includes("XXXX") || LOCATION_ID.includes("XXXX")) {
-          showError("Replace APPLICATION_ID and LOCATION_ID in the script with your sandbox credentials.");
+          showSetupNotice(
+            "Edit this page’s script: set APPLICATION_ID and LOCATION_ID to your sandbox Application ID and Location ID from the Developer Dashboard, then reload. The card fields appear only after Square initializes with valid IDs."
+          );
           return null;
         }
 
@@ -338,7 +360,13 @@
         clearResults();
 
         if (!cardInstance) {
-          showError("Card form is not ready yet.");
+          if (APPLICATION_ID.includes("XXXX") || LOCATION_ID.includes("XXXX")) {
+            showSetupNotice(
+              "Add your sandbox Application ID and Location ID in the script, then reload the page before tokenizing."
+            );
+          } else {
+            showError("Card form is not ready yet.");
+          }
           return;
         }
 
